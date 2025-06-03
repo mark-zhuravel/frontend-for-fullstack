@@ -1,70 +1,64 @@
-import React, { useState } from 'react';
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import InputField from "../form/components/InputField";
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import InputField from '../form/components/InputField';
 
-const loginSchema = z.object({
-  email: z.string().email("Введите корректный email"),
-  password: z.string().min(6, "Минимум 6 символов"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-
-interface LoginFormProps {
-  onSubmit: (email: string, password: string) => void;
-  onSignUpClick: () => void;
+interface LoginFormData {
+  email: string;
+  password: string;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onSignUpClick }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    mode: "onChange",
-  });
+export default function LoginForm() {
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
+  const navigate = useNavigate();
 
-  const onSubmitForm = (data: LoginFormValues) => {
-    onSubmit(data.email, data.password);
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      const response = await fetch('http://localhost:3000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        localStorage.setItem('token', result.token);
+        navigate('/');
+        window.location.reload();
+      } else {
+        console.error('Login failed');
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmitForm)} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <InputField
         label="Email"
-        register={register("email")}
-        error={errors.email?.message}
+        type="email"
+        register={register}
+        name="email"
+        required
+        error={errors.email}
       />
       <InputField
-        label="Пароль"
+        label="Password"
         type="password"
-        register={register("password")}
-        error={errors.password?.message}
+        register={register}
+        name="password"
+        required
+        error={errors.password}
       />
-
-      <div className="flex flex-col gap-4">
-        <button
-          type="submit"
-          className={`py-[15px] rounded-[47.32px] w-[45.6%] mx-auto font-extrabold uppercase ${
-            isValid 
-              ? "bg-[#F2890F] text-white cursor-pointer hover:bg-[#d67a0d] transition-colors" 
-              : "bg-[#B8B8B8] cursor-not-allowed"
-          }`}
-          disabled={!isValid}
-        >
-          Войти
-        </button>
-
-        <button
-          type="button"
-          onClick={onSignUpClick}
-          className="text-[#F2890F] text-sm hover:text-[#d67a0d] transition-colors text-center cursor-pointer"
-        >
-          Нет аккаунта? Зарегистрироваться
-        </button>
-      </div>
+      <button
+        type="submit"
+        className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+      >
+        Login
+      </button>
     </form>
   );
-}; 
+} 
